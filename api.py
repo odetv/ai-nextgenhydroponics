@@ -80,7 +80,7 @@ def object_detector(source):
 
     return detections, output_filename
 
-def cleanup_old_files(directory, max_files=2):
+def cleanup_old_files(directory, max_files=50):
     files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
     if len(files) > max_files:
         files.sort(key=os.path.getctime)
