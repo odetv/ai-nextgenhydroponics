@@ -21,9 +21,7 @@ else
   echo "Tidak ada aplikasi yang berjalan."
 fi
 
-# Jalankan kembali aplikasi dengan nohup menggunakan python3
-nohup python api.py > output.log 2>&1 &
-
-sleep 3
+# Jalankan kembali aplikasi dengan nohup menggunakan Python dari Miniconda
+nohup ~/miniconda/bin/python api.py > output.log 2>&1 &
 
 echo "Deploy selesai. Aplikasi FastAPI sudah berjalan."
