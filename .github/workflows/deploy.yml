@@ -20,6 +20,6 @@ jobs:
 
       - name: Deploy to VPS
         run: |
-          ssh -o StrictHostKeyChecking=no tim1@nextgen.dev.smartgreenovation.com 'bash -s' < ./deploy.sh
+          ssh -o StrictHostKeyChecking=no tim1@nextgen.dev.smartgreenovation.com 'bash -s' < deploy.sh
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
