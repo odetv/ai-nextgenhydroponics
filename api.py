@@ -89,7 +89,7 @@ def cleanup_old_files(directory, max_files=50):
 
 @app.get("/")
 async def index():
-    return {"message": "Selamat datang di API Model AI Next-Gen Hydroponics"}
+    return {"message": "Selamat datang di API Model AI Next-Gen Hydroponics!"}
 
 @app.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(None), image_url: str = Form(None)):
