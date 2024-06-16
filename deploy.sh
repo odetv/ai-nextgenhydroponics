@@ -13,7 +13,7 @@ git pull origin main
 echo "Sedang berada di direktori: $(pwd)"
 
 # Hentikan aplikasi yang sedang berjalan
-PIDS=$(ps aux | grep "uvicorn api:app" | grep -v grep | awk '{print $2}')
+PIDS=$(ps aux | grep "python api.py" | grep -v grep | awk '{print $2}')
 if [ -n "$PIDS" ]; then
   echo "Menghentikan aplikasi dengan PID: $PIDS"
   kill -9 $PIDS
@@ -22,6 +22,8 @@ else
 fi
 
 # Jalankan kembali aplikasi dengan nohup menggunakan python3
-nohup uvicorn api:app > output.log 2>&1 &
+nohup python api.py > output.log 2>&1 &
+
+sleep 3
 
 echo "Deploy selesai. Aplikasi FastAPI sudah berjalan."
