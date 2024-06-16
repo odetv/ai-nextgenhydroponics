@@ -18,9 +18,16 @@ else
   echo "Tidak ada aplikasi yang berjalan."
 fi
 
+# Tambahkan echo untuk memverifikasi direktori saat ini
+echo "Sedang berada di direktori: $(pwd)"
+
 # Pastikan Anda berada di direktori yang benar sebelum menjalankan aplikasi
+# Kembali ke direktori project untuk memastikan
 cd $PROJECT_DIR
 
-# Jalankan kembali aplikasi
+echo "Sekarang sedang berada di direktori: $(pwd)"
+
+# Jalankan kembali aplikasi dengan nohup
 nohup python api.py > output.log 2>&1 &
+
 echo "Deploy selesai."
