@@ -1,5 +1,5 @@
 from functools import wraps
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
@@ -9,6 +9,9 @@ import shutil
 import cv2
 import numpy as np
 from fastapi.staticfiles import StaticFiles
+from io import BytesIO
+import requests
+import base64
 
 app = FastAPI()
 
@@ -36,23 +39,40 @@ if not os.path.exists(output_directory):
 
 model = YOLO("models/best.pt")
 
-def object_detector(filename):
-    file_path = os.path.join(image_directory, filename)
-    results = model.predict(source=file_path, conf=0.5)
+def object_detector(source):
+    if source.startswith("http://") or source.startswith("https://"):
+        response = requests.get(source)
+        if response.status_code == 200:
+            # Baca gambar dari BytesIO
+            image_np = np.frombuffer(response.content, np.uint8)
+            img = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
+        else:
+            raise ValueError(f"Gagal mengambil gambar dari URL: {source}")
+    elif source.startswith("data:image"):
+        # Handle base64 encoded image
+        base64_str = source.split(",")[1]
+        # Decode base64 string
+        image_data = base64.b64decode(base64_str)
+        # Read decoded image data using OpenCV
+        nparr = np.frombuffer(image_data, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    else:
+        # Diasumsikan source adalah jalur file lokal
+        img = cv2.imread(source)
+
+    results = model.predict(source=img, conf=0.5)
 
     detections = []
 
-    img = cv2.imread(file_path)
-
     for result in results:
         for detection in result.boxes:
-            box = detection.xyxy[0].cpu().numpy().astype(int).tolist()  # bounding box coordinates
-            score = detection.conf[0].cpu().numpy()  # confidence score in decimal
-            label = model.names[int(detection.cls[0])]  # label/class
-            score_percentage = score * 100  # Convert to percentage
-            cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 3)  # Red color, thicker line
+            box = detection.xyxy[0].cpu().numpy().astype(int).tolist()  # koordinat kotak pembatas
+            score = detection.conf[0].cpu().numpy()  # skor kepercayaan dalam desimal
+            label = model.names[int(detection.cls[0])]  # label/kelas
+            score_percentage = score * 100  # Ubah menjadi persentase
+            cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 3)  # Warna merah, garis lebih tebal
             cv2.putText(img, f"{label} {score_percentage:.2f}%", (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-            detections.append({"box": box, "score": float(score), "label": label})  # Convert score to float
+            detections.append({"box": box, "score": float(score), "label": label})  # Konversi skor menjadi float
             
     output_filename = f"{uuid.uuid4()}.jpg"
     output_filepath = os.path.join(output_directory, output_filename)
@@ -72,24 +92,61 @@ async def index():
     return {"message": "API Model AI Next-Gen Hydroponics"}
 
 @app.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...)):
+async def upload_file(request: Request, file: UploadFile = File(None), image_url: str = Form(None)):
     try:
-        file.filename = f"{uuid.uuid4()}.jpg"
-        file_path = os.path.join(image_directory, file.filename)
+        if file:
+            # Handle UploadFile
+            file.filename = f"{uuid.uuid4()}.jpg"
+            file_path = os.path.join(image_directory, file.filename)
 
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        detections, detected_image_filename = object_detector(file.filename)
-        os.remove(file_path)  # Clean up the uploaded file
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+        elif image_url:
+            # Handle URL
+            if image_url.startswith("data:image"):
+                # Handle base64 encoded image
+                # Extract base64 string
+                base64_str = image_url.split(",")[1]
+                # Decode base64 string
+                image_data = base64.b64decode(base64_str)
+                # Save decoded image data to a temporary file
+                temp_filename = f"{uuid.uuid4()}.jpg"
+                temp_file_path = os.path.join(image_directory, temp_filename)
 
-        # Generate the full URL for the detected image
+                with open(temp_file_path, "wb") as f:
+                    f.write(image_data)
+
+                file_path = temp_file_path
+            else:
+                # Handle regular URL
+                response = requests.get(image_url)
+                if response.status_code == 200:
+                    # Save image from URL to a temporary file
+                    file_extension = image_url.split('.')[-1]
+                    temp_filename = f"{uuid.uuid4()}.{file_extension}"
+                    temp_file_path = os.path.join(image_directory, temp_filename)
+
+                    with open(temp_file_path, 'wb') as f:
+                        f.write(response.content)
+
+                    file_path = temp_file_path
+                else:
+                    raise HTTPException(status_code=400, detail="Gagal mengambil file dari URL")
+        else:
+            raise HTTPException(status_code=400, detail="Tidak ada file atau URL yang diberikan")
+
+        detections, detected_image_filename = object_detector(file_path)
+        # os.remove(file_path)  # Hapus file yang diunggah/sementara
+        cleanup_old_files(image_directory)
+
+        # Generate full URL untuk gambar yang terdeteksi
         base_url = str(request.base_url).rstrip("/")
         detected_image_url = f"{base_url}/detectedImages/{detected_image_filename}"
 
-        # Clean up old files in the detectedImages directory
+        # Bersihkan file lama di direktori detectedImages
         cleanup_old_files(output_directory)
 
-        # Determine the status of ulat
+        # Tentukan status ulat
         status_ulat = "true" if any(d["label"] == "ulat" for d in detections) else "false"
 
         return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})

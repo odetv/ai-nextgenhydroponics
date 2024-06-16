@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import uuid
 from ultralytics import YOLO
 import os
-import time
 import shutil
 import cv2
 import numpy as np
@@ -13,7 +12,6 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-# Allow CORS
 origins = [
     "http://localhost:3000",  # React
     "http://localhost:8080",  # Vue.js
@@ -33,55 +31,33 @@ output_directory = "detectedImages"  # Store detected images in this folder
 
 if not os.path.exists(image_directory):
     os.makedirs(image_directory)
-
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
 model = YOLO("models/best.pt")
 
-def rate_limited(max_calls: int, time_frame: int):
-    def decorator(func):
-        calls = []
-
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            now = time.time()
-            calls_in_time_frame = [call for call in calls if call > now - time_frame]
-            if len(calls_in_time_frame) >= max_calls:
-                raise HTTPException(status_code=429, detail="Rate limit exceeded!")
-            calls.append(now)
-            return await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
 def object_detector(filename):
     file_path = os.path.join(image_directory, filename)
     results = model.predict(source=file_path, conf=0.5)
+
     detections = []
 
-    # Load the original image
     img = cv2.imread(file_path)
-    
+
     for result in results:
         for detection in result.boxes:
             box = detection.xyxy[0].cpu().numpy().astype(int).tolist()  # bounding box coordinates
             score = detection.conf[0].cpu().numpy()  # confidence score in decimal
             label = model.names[int(detection.cls[0])]  # label/class
-
-            # Draw bounding box on the image
             score_percentage = score * 100  # Convert to percentage
             cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 3)  # Red color, thicker line
             cv2.putText(img, f"{label} {score_percentage:.2f}%", (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-
             detections.append({"box": box, "score": float(score), "label": label})  # Convert score to float
-
-    # Save the image with detections
+            
     output_filename = f"{uuid.uuid4()}.jpg"
     output_filepath = os.path.join(output_directory, output_filename)
     cv2.imwrite(output_filepath, img)
-    
+
     return detections, output_filename
 
 def cleanup_old_files(directory, max_files=2):
@@ -92,20 +68,17 @@ def cleanup_old_files(directory, max_files=2):
             os.remove(f)
 
 @app.get("/")
-@rate_limited(max_calls=100, time_frame=60)  # Decorator to limit requests
 async def index():
-    return {"message": "Hello World"}
+    return {"message": "API Model AI Next-Gen Hydroponics"}
 
 @app.post("/upload")
-@rate_limited(max_calls=100, time_frame=60)  # Decorator to limit requests
 async def upload_file(request: Request, file: UploadFile = File(...)):
     try:
         file.filename = f"{uuid.uuid4()}.jpg"
         file_path = os.path.join(image_directory, file.filename)
-        
+
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
-
         detections, detected_image_filename = object_detector(file.filename)
         os.remove(file_path)  # Clean up the uploaded file
 
@@ -123,9 +96,8 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount static files directory
 app.mount("/detectedImages", StaticFiles(directory=output_directory), name="detectedImages")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=8001, log_level="info")
