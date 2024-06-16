@@ -19,5 +19,7 @@ jobs:
           sudo apt-get install -y sshpass
 
       - name: Deploy to VPS
+        env:
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }} ssh tim1@nextgen.dev.smartgreenovation.com 'bash -s' < deploy.sh
+          sshpass -p "${SERVER_PASSWORD}" ssh -o StrictHostKeyChecking=no tim1@nextgen.dev.smartgreenovation.com 'bash -s' < deploy.sh
