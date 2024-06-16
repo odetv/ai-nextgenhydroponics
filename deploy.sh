@@ -13,7 +13,7 @@ git pull origin main
 echo "Sedang berada di direktori: $(pwd)"
 
 # Hentikan aplikasi yang sedang berjalan
-PIDS=$(ps aux | grep "python3 api.py" | grep -v grep | awk '{print $2}')
+PIDS=$(ps aux | grep "python api.py" | grep -v grep | awk '{print $2}')
 if [ -n "$PIDS" ]; then
   echo "Menghentikan aplikasi dengan PID: $PIDS"
   kill -9 $PIDS
@@ -23,6 +23,6 @@ fi
 
 # Jalankan kembali aplikasi dengan nohup menggunakan python3
 pip install -r requirements.txt
-nohup python3 api.py > output.log 2>&1 &
+nohup python api.py > output.log 2>&1 &
 
 echo "Deploy selesai. Aplikasi FastAPI sudah berjalan."
