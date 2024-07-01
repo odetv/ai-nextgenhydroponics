@@ -20,7 +20,7 @@ import asyncio
 
 
 # Firebase initialization
-cred = credentials.Certificate("./firebaseSDK.json" or "../firebaseSDK.json")
+cred = credentials.Certificate("../firebaseSDK.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://next-gen-hydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
