@@ -3,3 +3,4 @@ __pycache__
 runs/detect/**
 detectedImages/
 uploadedFile/
+firebaseSDK.json

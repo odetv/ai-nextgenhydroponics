@@ -12,18 +12,6 @@ from fastapi.staticfiles import StaticFiles
 from io import BytesIO
 import requests
 import base64
-from datetime import datetime
-import firebase_admin
-from firebase_admin import credentials, db
-from ultralytics import YOLO
-import asyncio
-
-
-# Firebase initialization
-cred = credentials.Certificate("./firebaseSDK.json" or "../firebaseSDK.json")
-firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://next-gen-hydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/'
-})
 
 app = FastAPI()
 
@@ -164,58 +152,6 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
         return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-@app.get("/detect_latest_image")
-async def detect_latest_image(request: Request):
-    try:
-        # Ambil data photo_original terbaru dari Firebase Realtime Database
-        ref = db.reference('esp32cam')
-        esp32cam_data = ref.get()
-
-        if not esp32cam_data:
-            raise HTTPException(status_code=404, detail="Tidak ada data ditemukan di Firebase")
-
-        # Ambil data berdasarkan tanggal terbaru
-        latest_date = max(esp32cam_data.keys(), key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
-        latest_time_data = esp32cam_data[latest_date]
-
-        # Ambil data berdasarkan waktu terbaru
-        latest_time = max(latest_time_data.keys(), key=lambda t: datetime.strptime(t, '%H:%M'))
-        photo_original = latest_time_data[latest_time]['photo_original']
-
-        # Lakukan deteksi objek menggunakan YOLO
-        detections, detected_image_filename = object_detector(photo_original)
-
-        # Generate full URL untuk gambar yang terdeteksi
-        detected_image_url = f"{base_url}/detectedImages/{detected_image_filename}"
-
-        # Tentukan status ulat
-        status_ulat = "true" if any(d["label"] == "ulat" for d in detections) else "false"
-
-        # Simpan hasil deteksi kembali ke Firebase
-        ref.child(latest_date).child(latest_time).update({
-            "photo_hama": detected_image_url,
-            "status_hama": status_ulat
-        })
-
-        return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.on_event("startup")
-async def startup_event():
-    global base_url
-    base_url = "http://127.0.0.1:8001"
-    asyncio.create_task(run_periodically())
-
-async def run_periodically():
-    while True:
-        request = Request(scope={"type": "http", "method": "GET", "headers": []})
-        try:
-            await detect_latest_image(request)
-        except Exception as e:
-            print(f"Error during periodic task: {e}")
-        await asyncio.sleep(1)
 
 app.mount("/detectedImages", StaticFiles(directory=output_directory), name="detectedImages")
 
