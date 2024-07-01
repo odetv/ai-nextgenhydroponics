@@ -18,9 +18,14 @@ from firebase_admin import credentials, db
 from ultralytics import YOLO
 import asyncio
 
-
 # Firebase initialization
-cred = credentials.Certificate("./firebaseSDK.json" or "../firebaseSDK.json")
+firebase_cred_paths = ["./firebaseSDK.json", "../firebaseSDK.json"]
+firebase_cred_path = next((path for path in firebase_cred_paths if os.path.exists(path)), None)
+
+if not firebase_cred_path:
+    raise FileNotFoundError("Firebase SDK JSON file not found in specified paths.")
+
+cred = credentials.Certificate(firebase_cred_path)
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://next-gen-hydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
