@@ -20,7 +20,7 @@ import asyncio
 
 
 # Firebase initialization
-cred = credentials.Certificate("../firebaseSDK.json")
+cred = credentials.Certificate("./firebaseSDK.json" or "../firebaseSDK.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://next-gen-hydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
@@ -205,7 +205,8 @@ async def detect_latest_image(request: Request):
 @app.on_event("startup")
 async def startup_event():
     global base_url
-    base_url = "http://127.0.0.1:8001"
+    # base_url = "http://127.0.0.1:8001"
+    base_url = "http://nextgen.dev.smartgreenovation.com"
     asyncio.create_task(run_periodically())
 
 async def run_periodically():
