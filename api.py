@@ -13,6 +13,7 @@ from io import BytesIO
 import requests
 import base64
 from datetime import datetime
+import pytz
 import firebase_admin
 from firebase_admin import credentials, db
 from ultralytics import YOLO
@@ -180,9 +181,11 @@ async def detect_latest_image(request: Request):
         if not esp32cam_data:
             raise HTTPException(status_code=404, detail="Tidak ada data ditemukan di Firebase")
 
-        # Ambil data berdasarkan tanggal hari ini
-        today_date = datetime.now().strftime('%Y-%m-%d')
-        current_time = datetime.now().strftime('%H:%M')
+        # Ambil data berdasarkan tanggal dan waktu hari ini di zona waktu GMT+8
+        tz = pytz.timezone('Asia/Singapore')  # GMT+8
+        now = datetime.now(tz)
+        today_date = now.strftime('%Y-%m-%d')
+        current_time = now.strftime('%H:%M')
 
         if today_date not in esp32cam_data:
             raise HTTPException(status_code=404, detail="Tidak ada data ditemukan untuk tanggal hari ini")
