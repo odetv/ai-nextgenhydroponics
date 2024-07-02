@@ -180,39 +180,30 @@ async def detect_latest_image(request: Request):
         if not esp32cam_data:
             raise HTTPException(status_code=404, detail="Tidak ada data ditemukan di Firebase")
 
-        # Ambil data berdasarkan tanggal hari ini
-        today_date = datetime.now().strftime('%Y-%m-%d')
-        current_time = datetime.now().strftime('%H:%M')
+        # Ambil data berdasarkan tanggal terbaru
+        latest_date = max(esp32cam_data.keys(), key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
+        latest_time_data = esp32cam_data[latest_date]
 
-        if today_date not in esp32cam_data:
-            raise HTTPException(status_code=404, detail="Tidak ada data ditemukan untuk tanggal hari ini")
+        # Ambil data berdasarkan waktu terbaru
+        latest_time = max(latest_time_data.keys(), key=lambda t: datetime.strptime(t, '%H:%M'))
+        photo_original = latest_time_data[latest_time]['photo_original']
 
-        today_time_data = esp32cam_data[today_date]
+        # Lakukan deteksi objek menggunakan YOLO
+        detections, detected_image_filename = object_detector(photo_original)
 
-        # Ambil data berdasarkan waktu terbaru pada hari ini
-        latest_time = max(today_time_data.keys(), key=lambda t: datetime.strptime(t, '%H:%M'))
-        photo_original = today_time_data[latest_time]['photo_original']
+        # Generate full URL untuk gambar yang terdeteksi
+        detected_image_url = f"{base_url}/detectedImages/{detected_image_filename}"
 
-        # Cek apakah tanggal dan waktu dari Firebase sesuai dengan tanggal dan waktu saat ini
-        if today_date == today_date and latest_time == current_time:
-            # Lakukan deteksi objek menggunakan YOLO
-            detections, detected_image_filename = object_detector(photo_original)
+        # Tentukan status ulat
+        status_ulat = "true" if any(d["label"] == "ulat" for d in detections) else "false"
 
-            # Generate full URL untuk gambar yang terdeteksi
-            detected_image_url = f"{base_url}/detectedImages/{detected_image_filename}"
+        # Simpan hasil deteksi kembali ke Firebase
+        ref.child(latest_date).child(latest_time).update({
+            "photo_hama": detected_image_url,
+            "status_hama": status_ulat
+        })
 
-            # Tentukan status ulat
-            status_ulat = "true" if any(d["label"] == "ulat" for d in detections) else "false"
-
-            # Simpan hasil deteksi kembali ke Firebase
-            ref.child(today_date).child(latest_time).update({
-                "photo_hama": detected_image_url,
-                "status_hama": status_ulat
-            })
-
-            return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
-        else:
-            return JSONResponse(content={"message": "Tidak ada data terbaru untuk tanggal dan waktu saat ini."})
+        return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
