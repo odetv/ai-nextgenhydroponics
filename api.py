@@ -233,7 +233,7 @@ async def run_periodically():
             await detect_latest_image(request)
         except Exception as e:
             print(f"Error during periodic task: {e}")
-        await asyncio.sleep(1)
+        await asyncio.sleep(30)
 
 app.mount("/detectedImages", StaticFiles(directory=output_directory), name="detectedImages")
 
