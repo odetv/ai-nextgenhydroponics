@@ -219,21 +219,21 @@ async def detect_latest_image(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.on_event("startup")
-async def startup_event():
-    global base_url
-    # base_url = "http://127.0.0.1:8001"
-    base_url = "http://nextgen.dev.smartgreenovation.com"
-    asyncio.create_task(run_periodically())
+# @app.on_event("startup")
+# async def startup_event():
+#     global base_url
+#     # base_url = "http://127.0.0.1:8001"
+#     base_url = "http://nextgen.dev.smartgreenovation.com"
+#     asyncio.create_task(run_periodically())
 
-async def run_periodically():
-    while True:
-        request = Request(scope={"type": "http", "method": "GET", "headers": []})
-        try:
-            await detect_latest_image(request)
-        except Exception as e:
-            print(f"Error during periodic task: {e}")
-        await asyncio.sleep(30)
+# async def run_periodically():
+#     while True:
+#         request = Request(scope={"type": "http", "method": "GET", "headers": []})
+#         try:
+#             await detect_latest_image(request)
+#         except Exception as e:
+#             print(f"Error during periodic task: {e}")
+#         await asyncio.sleep(1)
 
 app.mount("/detectedImages", StaticFiles(directory=output_directory), name="detectedImages")
 
