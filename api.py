@@ -218,7 +218,9 @@ async def detect_latest_image(request: Request):
             return JSONResponse(content={"message": "Tidak ada data terbaru untuk tanggal dan waktu saat ini."})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+base_url = "http://nextgen.dev.smartgreenovation.com"
+
 # @app.on_event("startup")
 # async def startup_event():
 #     global base_url
