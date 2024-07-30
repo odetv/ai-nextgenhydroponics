@@ -28,7 +28,7 @@ if not firebase_cred_path:
 
 cred = credentials.Certificate(firebase_cred_path)
 firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://research-nextgenhydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/'
+    'databaseURL': 'https://nextgenhidroponik-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
 
 app = FastAPI()
