@@ -111,6 +111,7 @@ async def index():
 
 @app.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(None), image_url: str = Form(None)):
+    photo_original = None
     try:
         if file:
             # Handle UploadFile
@@ -119,12 +120,16 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
 
             with open(file_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
+            # Encode image to base64
+            with open(file_path, "rb") as f:
+                photo_original = base64.b64encode(f.read()).decode('utf-8')
         elif image_url:
             # Handle URL
             if image_url.startswith("data:image"):
                 # Handle base64 encoded image
                 # Extract base64 string
                 base64_str = image_url.split(",")[1]
+                photo_original = base64_str  # Save original base64 string
                 # Decode base64 string
                 image_data = base64.b64decode(base64_str)
                 # Save decoded image data to a temporary file
@@ -147,6 +152,9 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
                     with open(temp_file_path, 'wb') as f:
                         f.write(response.content)
 
+                    with open(temp_file_path, "rb") as f:
+                        photo_original = base64.b64encode(f.read()).decode('utf-8')
+
                     file_path = temp_file_path
                 else:
                     raise HTTPException(status_code=400, detail="Gagal mengambil file dari URL")
@@ -167,7 +175,13 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
         # Tentukan status ulat
         status_ulat = "true" if any(d["label"] == "ulat" for d in detections) else "false"
 
-        return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
+        # return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
+        return JSONResponse(content={
+                "detections": detections,
+                "status_ulat": status_ulat,
+                "photo_detected": detected_image_url,
+                "photo_original": f"data:image/png;base64,{photo_original}"
+            })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
