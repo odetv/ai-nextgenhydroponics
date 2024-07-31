@@ -111,6 +111,7 @@ async def index():
 
 @app.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(None), image_url: str = Form(None)):
+    base_url = str(request.base_url).rstrip("/")
     try:
         if file:
             # Handle UploadFile
@@ -119,35 +120,34 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
 
             with open(file_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
+
+            photo_original = f"{base_url}/uploadedFile/{file.filename}"
+
         elif image_url:
             # Handle URL
             if image_url.startswith("data:image"):
                 # Handle base64 encoded image
-                # Extract base64 string
                 base64_str = image_url.split(",")[1]
-                # Decode base64 string
                 image_data = base64.b64decode(base64_str)
-                # Save decoded image data to a temporary file
                 temp_filename = f"{uuid.uuid4()}.jpg"
-                temp_file_path = os.path.join(image_directory, temp_filename)
+                file_path = os.path.join(image_directory, temp_filename)
 
-                with open(temp_file_path, "wb") as f:
+                with open(file_path, "wb") as f:
                     f.write(image_data)
-
-                file_path = temp_file_path
+                
+                photo_original = f"{base_url}/uploadedFile/{temp_filename}"
             else:
                 # Handle regular URL
                 response = requests.get(image_url)
                 if response.status_code == 200:
-                    # Save image from URL to a temporary file
                     file_extension = image_url.split('.')[-1]
                     temp_filename = f"{uuid.uuid4()}.{file_extension}"
-                    temp_file_path = os.path.join(image_directory, temp_filename)
+                    file_path = os.path.join(image_directory, temp_filename)
 
                     with open(temp_file_path, 'wb') as f:
                         f.write(response.content)
 
-                    file_path = temp_file_path
+                    photo_original = f"{base_url}/uploadedFile/{temp_filename}"
                 else:
                     raise HTTPException(status_code=400, detail="Gagal mengambil file dari URL")
         else:
@@ -158,7 +158,6 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
         cleanup_old_files(image_directory)
 
         # Generate full URL untuk gambar yang terdeteksi
-        base_url = str(request.base_url).rstrip("/")
         detected_image_url = f"{base_url}/detectedImages/{detected_image_filename}"
 
         # Bersihkan file lama di direktori detectedImages
@@ -167,7 +166,13 @@ async def upload_file(request: Request, file: UploadFile = File(None), image_url
         # Tentukan status ulat
         status_ulat = "true" if any(d["label"] == "ulat" for d in detections) else "false"
 
-        return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
+        # return JSONResponse(content={"detections": detections, "status_ulat": status_ulat, "photo_detected": detected_image_url})
+        return JSONResponse(content={
+                "detections": detections,
+                "status_ulat": status_ulat,
+                "photo_detected": detected_image_url,
+                "photo_original": photo_original
+            })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -238,6 +243,7 @@ base_url = "http://nextgen.dev.smartgreenovation.com"
 #         await asyncio.sleep(1)
 
 app.mount("/detectedImages", StaticFiles(directory=output_directory), name="detectedImages")
+app.mount("/uploadedFile", StaticFiles(directory=image_directory), name="uploadedFile")
 
 if __name__ == "__main__":
     import uvicorn
